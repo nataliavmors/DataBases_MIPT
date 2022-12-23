@@ -1,0 +1,64 @@
+/* 1 */
+SELECT TOP(10) companyName, YEAR(dateId) AS Год, MONTH(dateId) AS Месяц, SUM(salesRub) AS Выручка FROM distributor.singleSales 
+GROUP BY companyName, YEAR(dateId), MONTH(dateId) ORDER BY YEAR(dateId), MONTH(dateId);
+/* 2 */
+SELECT TOP(10) companyName, YEAR(dateId) AS Год, MONTH(dateId) AS Месяц, SUM(salesRub) AS Выручка FROM distributor.singleSales
+WHERE DAY(dateId) = 1 GROUP BY companyName, YEAR(dateId), MONTH(dateId) ORDER BY YEAR(dateId), MONTH(dateId);
+/* 3 */
+WITH temp(company, mn, mx, num) AS (SELECT companyName, min(dateId), max(dateId), count(distinct checkId) FROM distributor.singleSales GROUP BY companyName)
+SELECT TOP(10) company, (datediff(month, mn, mx) / (num)) AS 'months', (datediff(day, mn, mx) / (num)) AS 'days' FROM temp WHERE num != 0 ORDER BY months desc, days desc;
+/* 4 */
+SELECT companyName, DateName(month, DateAdd(month, month(dateId) - 1, '1900-01-01')) AS 'month', SUM(salesRub) AS 'sales' FROM distributor.singleSales
+WHERE DAY(dateId) = 1 GROUP BY companyName, MONTH(dateId) ORDER BY MONTH(dateId);
+/* 5 */
+DECLARE @start datetime;
+SET @start = (SELECT DateAdd(year, -8, GETDATE()));
+
+DECLARE @start365 datetime;
+SET @start365 = (SELECT DateAdd(day, -365, @start));
+
+DECLARE @start180 datetime;
+SET @start180 = (SELECT DateAdd(day, -180, @start));
+
+DECLARE @start90 datetime;
+SET @start90 = (SELECT DateAdd(day, -90, @start));
+
+WITH temp(company, mx) AS (SELECT companyName, max(dateId) FROM distributor.singleSales WHERE dateId < @start GROUP BY companyName)
+SELECT TOP(10) company, iif((mx < @start365), 'category 1', iif((mx < @start180), 'category 2', iif((mx < @start90), 'category 3', 'bought recently'))) 
+AS 'category' FROM temp;
+/* 6 */
+SELECT TOP(10) companyName, YEAR(dateId) AS 'year', DATEPART(QUARTER, dateId) AS 'q', SUM(salesRub) AS 'sales' FROM distributor.singleSales
+GROUP BY companyName, YEAR(dateId), DATEPART(QUARTER, dateId) ORDER BY YEAR(dateId), DATEPART(QUARTER, dateId);
+/* 7 */
+SELECT TOP(10) companyName, YEAR(dateId) AS 'year', DATEPART(WEEKDAY, dateId) AS 'day', SUM(salesRub) AS 'sales' FROM distributor.singleSales
+GROUP BY companyName, YEAR(dateId), DATEPART(WEEKDAY, dateId) ORDER BY YEAR(dateId), DATEPART(WEEKDAY, dateId);
+/* 8 */
+SELECT TOP(10) companyName FROM distributor.singleSales WHERE lower(companyName) LIKE '%ооо%';
+/* 9 */
+SELECT TOP(10) companyName FROM distributor.singleSales WHERE lower(companyName) LIKE 'ооо%';
+/* 10 */
+SELECT DISTINCT TOP(10) fullname, SUBSTRING(fullname, 1, CHARINDEX(' ', fullname) - 1) AS 'surname', 
+SUBSTRING(fullname, CHARINDEX(' ', fullname) + 1, LEN(fullname) - CHARINDEX(' ', fullname)) AS 'name',
+SUBSTRING(fullname, 1, CHARINDEX(' ', fullname) + 1) AS 'initials' FROM distributor.singleSales WHERE fullname IS NOT NULL;
+
+/* задание 1 */
+/* 31 */
+SELECT fullname, COUNT(companyName) AS cnt FROM distributor.singleSales GROUP BY fullname HAVING COUNT(companyName) > 50 AND fullname IS NOT NULL;
+/* 32 */
+WITH sms(managerId, numberOfBranches) AS (SELECT sm.salesManagerId, COUNT(DISTINCT branch.branchId) FROM distributor.sales
+INNER JOIN distributor.branch ON (sales.branchId = branch.branchId) 
+INNER JOIN distributor.salesManager AS sm ON (sales.salesManagerId = sm.salesManagerId) GROUP BY sm.salesManagerId HAVING COUNT(DISTINCT branch.branchId) > 1)
+SELECT TOP(10) managerId, numberOfBranches, salesManager.surname, salesManager.[names] FROM sms
+INNER JOIN distributor.salesManager ON (sms.managerId = salesManager.salesManagerId);
+/* 33 */
+SELECT DISTINCT fullname, floor(sum(salesRub)) AS summ FROM distributor.singleSales GROUP BY fullname HAVING fullname IS NOT NULL;
+/* 34 */
+SELECT TOP(10) s.itemId, dateId, yearId, monthId FROM distributor.singleSales s JOIN distributor.ddp ddp ON s.itemId = ddp.itemId
+GROUP BY s.itemId, dateId, yearId, monthId;
+/* 35 !*/
+SELECT count(DISTINCT checkId) AS na FROM distributor.singleSales, count(itemId), 
+avg(na) AS average FROM(SELECT avg(DISTINCT checkId) FROM distributor.singleSales) AS s,
+COUNT(itemId) AS avgit FROM distributor.singleSales;
+/* 36 */
+SELECT count(DISTINCT account) AS accounts FROM(SELECT checkId, sum(salesRub) as account FROM distributor.singleSales 
+GROUP BY checkId HAVING COUNT(sales) > 2) as s;
